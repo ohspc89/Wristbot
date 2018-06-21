@@ -40,6 +40,15 @@ class PIDobject(threevariables, twovariables):
         else:
             twovariables.__init__(self, filename)
 
+    def plot_diff(self):
+        plt.figure()
+        plt.plot(self.df.target_x)
+        plt.plot(self.df.positn_x, alpha = 0.8)
+        plt.title("P{},D{},S{}, difference in positions".format(self.P, self.D, self.S), fontweight = "bold")
+        plt.xlabel("Index")
+        plt.ylabel("Distance in degrees")
+        plt.show(block=False)
+
     def get_turn_points(self):
         return np.where(np.diff(self.df.target_x) != 0)[0]
 
@@ -61,14 +70,14 @@ class PIDobject(threevariables, twovariables):
         torquename = "torque_" + axis
         return self.df[torquename]
 
-    def plot_torques(self, axis = "x", return_values = False):
+    def plot_torques(self, axis = "x"):
         torquename = "torque_" + axis
-        plt.figure(1)
+        plt.figure()
         plt.plot(self.get_torques(axis))
         plt.title("P{}, D{}, S{}, {}".format(self.P, self.D, self.S, torquename), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel(torquename)
-        plt.show()
+        plt.show(block=False)
 
 '''this is the fuction that will create and store all the PIDobjects'''
 def create_PIDs(directory):
@@ -82,6 +91,12 @@ def create_PIDs(directory):
             pidobjs.append(PIDobject(filename))
 
     return pidobjs
+
+'''plot difference between positn_x and target_x'''
+def which_diffplot(pidobjs, P, D, S = 100):
+    for pidobj in pidobjs:
+        if (pidobj.P == P) & (pidobj.D == D) & (pidobj.S == S):
+            pidobj.plot_diff()
 
 '''For error calculation'''
 def PIDobjs_mean_avg_err(pidobjs):
@@ -110,10 +125,10 @@ def PIDobjs_mean_avg_err(pidobjs):
 def mean_avg_err_heatmap(df, xaxis = "P", yaxis = "D"):
     df4heatmap = df[df.S == 100].pivot(yaxis, xaxis, "error")
 
-    plt.figure(1)
+    plt.figure()
     sns.heatmap(df4heatmap)
     plt.title('A heatmap of mean absolute errors for PID values', fontweight = 'bold')
-    plt.show()
+    plt.show(block = False)
 
 '''The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted'''
 '''The default torque axis is x-axis'''
@@ -131,15 +146,28 @@ if __name__ == "__main__":
     cont_yes = ''
     while cont_yes != 'n':
         activity = ''
-        while activity not in ['0', '1']:
-            activity = input("Choose your activity:\n0: plot a heatmap of the mean absolute errors\n1: plot torque values\n")
+        while activity not in ['0', '1', '2']:
+            activity = input("Choose your plot type:\n0: distance between the target and the \
+actual position\n1: a heatmap of the mean absolute errors\n2: torque values(x, y, z)\n")
             if activity == '0':
+                P = input("P: ")
+                D = input("D: ")
+                S = input("S (hit enter if it is 100): ")
+                if S == '':
+                    S = 100
+                which_diffplot(pidobjs, int(P), int(D), int(S))
+
+            elif activity == '1':
                 mean_errs = PIDobjs_mean_avg_err(pidobjs)
                 mean_avg_err_heatmap(mean_errs)
+
             else:
-                P = int(input("P: "))
-                D = int(input("D: "))
-                S = int(input("S: "))
+                P = input("P: ")
+                D = input("D: ")
+                S = input("S (hit enter if it is 100): ")
+                if S == '':
+                    S = 100
                 axis = input("axis: ")
-                which_torqueplot(pidobjs, P, D, S, axis)
+                which_torqueplot(pidobjs, int(P), int(D), int(S), axis)
         cont_yes = input("Do you want to continue?[y/n]: ")
+    print("Bye bye!")
