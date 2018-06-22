@@ -16,9 +16,9 @@ class twovariables:
     def __init__(self, filename):
         self.filename = filename
         self.params = filename[:-4].split(',')
-        self.P = int(self.params[0][1:])
-        self.D = int(self.params[1][1:])
-        self.S = int(100)
+        self.P = float(self.params[0][1:])
+        self.D = float(self.params[1][1:])
+        self.S = float(100)
         self.df = self.read_file()
 
     '''read the file with the filename'''
@@ -30,7 +30,7 @@ class threevariables(twovariables):
 
     def __init__(self, filename):
         twovariables.__init__(self, filename)
-        self.S = int(self.params[2][1:])
+        self.S = float(self.params[2][1:])
 
 class PIDobject(threevariables, twovariables):
 
@@ -47,24 +47,33 @@ class PIDobject(threevariables, twovariables):
         plt.title("P{},D{},S{}, difference in positions".format(self.P, self.D, self.S), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel("Distance in degrees")
-        plt.show(block=False)
 
-    def get_turn_points(self):
+    def get_turn_pofloats(self):
         return np.where(np.diff(self.df.target_x) != 0)[0]
 
     def make_windows(self):
-        turn_points = self.get_turn_points()
-        start = turn_points[ : -1] + 1
-        end = turn_points[1 : ] + 1
+        turn_pofloats = self.get_turn_pofloats()
+        start = turn_pofloats[ : -1] + 1
+        end = turn_pofloats[1 : ] + 1
         return [self.df.iloc[a : b] for a, b in zip(start, end)]
 
-    def abs_err(self):
+    '''add an option to choose which type of error to look at'''
+    '''the types are: total, targets and origins'''
+    def abs_err(self, option = "total"):
         windows = self.make_windows()
 
         positn_xs = [np.unique(window.positn_x, return_counts = True) for window in windows]
-        error = [abs(max(window.target_x) - positn_xs[i][0][positn_xs[i][1].argmax()]) for i, window in enumerate(windows)]
+        error = np.array([abs(max(window.target_x) - positn_xs[i][0][positn_xs[i][1].argmax()]) for i, window in enumerate(windows)])
 
-        return [x * 180 / math.pi for x in error]
+        targets = np.array([error[i] for i in range(len(error)) if i % 2 == 0])
+        origins = error[~np.isin(error, targets)]
+
+        if option == "targets":
+            return np.array([x * 180 / math.pi for x in targets])
+        elif option == "origins":
+            return np.array([x * 180 / math.pi for x in origins])
+        else:
+            return np.array([x * 180 / math.pi for x in error])
 
     def get_torques(self, axis = 'x'):
         torquename = "torque_" + axis
@@ -155,7 +164,7 @@ actual position\n1: a heatmap of the mean absolute errors\n2: torque values(x, y
                 S = input("S (hit enter if it is 100): ")
                 if S == '':
                     S = 100
-                which_diffplot(pidobjs, int(P), int(D), int(S))
+                which_diffplot(pidobjs, float(P), float(D), float(S))
 
             elif activity == '1':
                 mean_errs = PIDobjs_mean_avg_err(pidobjs)
@@ -168,6 +177,6 @@ actual position\n1: a heatmap of the mean absolute errors\n2: torque values(x, y
                 if S == '':
                     S = 100
                 axis = input("axis: ")
-                which_torqueplot(pidobjs, int(P), int(D), int(S), axis)
+                which_torqueplot(pidobjs, float(P), float(D), float(S), axis)
         cont_yes = input("Do you want to continue?[y/n]: ")
     print("Bye bye!")
