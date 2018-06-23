@@ -48,13 +48,13 @@ class PIDobject(threevariables, twovariables):
         plt.xlabel("Index")
         plt.ylabel("Distance in degrees")
 
-    def get_turn_pofloats(self):
+    def get_turn_points(self):
         return np.where(np.diff(self.df.target_x) != 0)[0]
 
     def make_windows(self):
-        turn_pofloats = self.get_turn_pofloats()
-        start = turn_pofloats[ : -1] + 1
-        end = turn_pofloats[1 : ] + 1
+        turn_points = self.get_turn_points()
+        start = turn_points[ : -1] + 1
+        end = turn_points[1 : ] + 1
         return [self.df.iloc[a : b] for a, b in zip(start, end)]
 
     '''add an option to choose which type of error to look at'''
