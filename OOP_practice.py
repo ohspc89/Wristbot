@@ -47,6 +47,7 @@ class PIDobject(threevariables, twovariables):
         plt.title("P{},D{},S{}, difference in positions".format(self.P, self.D, self.S), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel("Distance in degrees")
+        plt.show(block=False)
 
     def get_turn_points(self):
         return np.where(np.diff(self.df.target_x) != 0)[0]
@@ -146,6 +147,34 @@ def which_torqueplot(pidobjs, P, D, S, axis="x"):
         if (pidobj.P == P) & (pidobj.D == D) & (pidobj.S == S):
             pidobj.plot_torques(axis)
 
+def print_error_all_or_not(pidobjs, all_yes):
+
+    err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets\n")
+    while err_type not in ['0', '1', '2']:
+        err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets\n")
+
+    if all_yes == "y":
+        for pidobj in pidobjs:
+            print_error(pidobj, err_type)
+    else:
+        P = input("P: ")
+        D = input("D: ")
+        S = input("S (hit enter if it is 100): ")
+        if S == '':
+            S = 100
+        for pidobj in pidobjs:
+            if (pidobj.P == float(P)) & (pidobj.D == float(D)) & (pidobj.S == float(S)):
+                print_error(pidobj, err_type)
+
+def print_error(pidobj, err_type):
+    if err_type == '0':
+        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err()), np.var(pidobj.abs_err())))
+    elif err_type == '1':
+        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('origins')), np.var(pidobj.abs_err('origins'))))
+    else:
+        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('targets')), np.var(pidobj.abs_err('targets'))))
+
+
 if __name__ == "__main__":
     directory = input("Type your directory: ")
     print('You typed:', directory)
@@ -155,10 +184,16 @@ if __name__ == "__main__":
     cont_yes = ''
     while cont_yes != 'n':
         activity = ''
-        while activity not in ['0', '1', '2']:
-            activity = input("Choose your plot type:\n0: distance between the target and the \
-actual position\n1: a heatmap of the mean absolute errors\n2: torque values(x, y, z)\n")
+        while activity not in ['0', '1', '2', '3']:
+            activity = input("What do you want to do? :\n0: get the means and the variances of the distances between the targets and \
+the actual positions\n1: plot the distances\n2: plot a heatmap of the mean absolute errors\n3: torque values(x, y, z)\n")
             if activity == '0':
+                all_yes = input("Do you want to print the means and the variances of all the data?[y/n]: ")
+                while all_yes not in ['y', 'n']:
+                    all_yes = input("Wrong Input!!\nDo you want to print the means and the variances of all the data?[y/n]: ")
+                print_error_all_or_not(pidobjs, all_yes)
+
+            elif activity == '1':
                 P = input("P: ")
                 D = input("D: ")
                 S = input("S (hit enter if it is 100): ")
@@ -166,7 +201,7 @@ actual position\n1: a heatmap of the mean absolute errors\n2: torque values(x, y
                     S = 100
                 which_diffplot(pidobjs, float(P), float(D), float(S))
 
-            elif activity == '1':
+            elif activity == '2':
                 mean_errs = PIDobjs_mean_avg_err(pidobjs)
                 mean_avg_err_heatmap(mean_errs)
 
