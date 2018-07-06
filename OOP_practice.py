@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import math
 import os
 import seaborn as sns
-import time
 
 class twovariables:
 
@@ -47,7 +46,7 @@ class PIDobject(threevariables, twovariables):
         plt.title("P{},D{},S{}, difference in positions".format(self.P, self.D, self.S), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel("Distance in degrees")
-        plt.show(block=False)
+        plt.show()
 
     def get_turn_points(self):
         return np.where(np.diff(self.df.target_x) != 0)[0]
@@ -70,11 +69,11 @@ class PIDobject(threevariables, twovariables):
         origins = error[~np.isin(error, targets)]
 
         if option == "targets":
-            return np.array([x * 180 / math.pi for x in targets])
+            return np.array([x * 180 / np.pi for x in targets])
         elif option == "origins":
-            return np.array([x * 180 / math.pi for x in origins])
+            return np.array([x * 180 / np.pi for x in origins])
         else:
-            return np.array([x * 180 / math.pi for x in error])
+            return np.array([x * 180 / np.pi for x in error])
 
     def get_torques(self, axis = 'x'):
         torquename = "torque_" + axis
@@ -87,7 +86,7 @@ class PIDobject(threevariables, twovariables):
         plt.title("P{}, D{}, S{}, {}".format(self.P, self.D, self.S, torquename), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel(torquename)
-        plt.show(block=False)
+        plt.show()
 
 '''this is the fuction that will create and store all the PIDobjects'''
 def create_PIDs(directory):
@@ -138,7 +137,7 @@ def mean_avg_err_heatmap(df, xaxis = "P", yaxis = "D"):
     plt.figure()
     sns.heatmap(df4heatmap)
     plt.title('A heatmap of mean absolute errors for PID values', fontweight = 'bold')
-    plt.show(block = False)
+    plt.show()
 
 '''The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted'''
 '''The default torque axis is x-axis'''
@@ -148,14 +147,25 @@ def which_torqueplot(pidobjs, P, D, S, axis="x"):
             pidobj.plot_torques(axis)
 
 def print_error_all_or_not(pidobjs, all_yes):
+    '''ask if the data is from Joint Matching Task'''
+    isjmt = input("Is your data from Joint Matching Task?:\n0: No\n1: Yes\n")
 
-    err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets\n")
-    while err_type not in ['0', '1', '2']:
-        err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets\n")
+    '''loop until we get a correct response for [isjmt]'''
+    while isjmt not in ['0', '1']:
+        isjmt = input("Wrong number, choose again.\nIs your data from Joint Matching Task?:\n0: No\n1: Yes\n")
+
+    if isjmt == "1":
+        err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets(passive movement)\n3: Distances at targets(active movement)\n")
+        while err_type not in ['0', '1', '2', '3']:
+            err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets(passive movement)\n3: Distances at targets(active movement)\n")
+    else:
+        err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets\n")
+        while err_type not in ['0', '1', '2']:
+            err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets\n")
 
     if all_yes == "y":
         for pidobj in pidobjs:
-            print_error(pidobj, err_type)
+            print_error(pidobj, isjmt, err_type)
     else:
         P = input("P: ")
         D = input("D: ")
@@ -164,16 +174,26 @@ def print_error_all_or_not(pidobjs, all_yes):
             S = 100
         for pidobj in pidobjs:
             if (pidobj.P == float(P)) & (pidobj.D == float(D)) & (pidobj.S == float(S)):
-                print_error(pidobj, err_type)
+                print_error(pidobj, isjmt, err_type)
 
-def print_error(pidobj, err_type):
-    if err_type == '0':
+'''added a parameter [isjmt] to indicate if the data is from joint matching task'''
+def print_error(pidobj, isjmt, err_type):
+    if err_type == "0":
         print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err()), np.var(pidobj.abs_err())))
     elif err_type == '1':
         print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('origins')), np.var(pidobj.abs_err('origins'))))
+    elif err_type == "2":
+        '''if the data is from JMT, err_type # 2 is the error at target positions, passive movements'''
+        if isjmt == "1":
+            target_pm = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 0])
+            print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_pm), np.var(target_pm)))
+        '''if the data is NOT from JMT, err_type # 2 is error at target position and no indication of passive or active'''
+        else:
+            print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('targets')), np.var(pidobj.abs_err('targets'))))
+    '''now, err_type # 3 is the error at target positions, active movements'''
     else:
-        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('targets')), np.var(pidobj.abs_err('targets'))))
-
+        target_am = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 1])
+        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_am), np.var(target_am)))
 
 if __name__ == "__main__":
     directory = input("Type your directory: ")
