@@ -187,10 +187,8 @@ def print_error(pidobj, isjmt, err_type):
         if isjmt == "1":
             target_pm = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 0])
             print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_pm), np.var(target_pm)))
-        '''if the data is NOT from JMT, err_type # 2 is error at target position and no indication of passive or active'''
         else:
             print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('targets')), np.var(pidobj.abs_err('targets'))))
-    '''now, err_type # 3 is the error at target positions, active movements'''
     else:
         target_am = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 1])
         print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_am), np.var(target_am)))
