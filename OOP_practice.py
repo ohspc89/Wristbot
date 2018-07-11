@@ -41,8 +41,8 @@ class PIDobject(threevariables, twovariables):
 
     def plot_diff(self):
         plt.figure()
-        plt.plot(self.df.target_x)
-        plt.plot(self.df.positn_x, alpha = 0.8)
+        plt.plot(self.df.target_x * 180 / np.pi)
+        plt.plot(self.df.positn_x * 180 / np.pi, alpha = 0.8)
         plt.title("P{},D{},S{}, difference in positions".format(self.P, self.D, self.S), fontweight = "bold")
         plt.xlabel("Index")
         plt.ylabel("Distance in degrees")
@@ -139,59 +139,103 @@ def mean_avg_err_heatmap(df, xaxis = "P", yaxis = "D"):
     plt.title('A heatmap of mean absolute errors for PID values', fontweight = 'bold')
     plt.show()
 
-'''The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted'''
-'''The default torque axis is x-axis'''
+'''The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted; default = x'''
 def which_torqueplot(pidobjs, P, D, S, axis="x"):
     for pidobj in pidobjs:
         if (pidobj.P == P) & (pidobj.D == D) & (pidobj.S == S):
             pidobj.plot_torques(axis)
 
+''' A function to get the user inputs for P, I, D values'''
+def get_PID_vals():
+    print("Remember, if your type parameter values are absent, you will get no result")
+    P = input("P: ")
+    D = input("D: ")
+    S = input("S (hit enter if it is 100): ")
+    if S == '':
+        S = 100
+    return P, D, S
+
+
 def print_error_all_or_not(pidobjs, all_yes):
     '''ask if the data is from Joint Matching Task'''
-    isjmt = input("Is your data from Joint Matching Task?:\n0: No\n1: Yes\n")
+    isjmt = yes_or_no("jmt")
 
-    '''loop until we get a correct response for [isjmt]'''
-    while isjmt not in ['0', '1']:
-        isjmt = input("Wrong number, choose again.\nIs your data from Joint Matching Task?:\n0: No\n1: Yes\n")
+    if isjmt in ["y", "Y"]:
+        while True:
+            try:
+                err_type_idx = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets(passive movement)\n3: Distances at targets(active movement)\n")
+                if err_type_idx not in ["0", "1", "2", "3"]:
+                    raise ValueError("Wrong input, type again")
+                else:
+                    break
+            except ValueError as e:
+                print(e)
 
-    if isjmt == "1":
-        err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets(passive movement)\n3: Distances at targets(active movement)\n")
-        while err_type not in ['0', '1', '2', '3']:
-            err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets(passive movement)\n3: Distances at targets(active movement)\n")
     else:
-        err_type = input("Choose the type of distance :\n0: All distances\n1: Distnaces at origins\n2: Distances at targets\n")
-        while err_type not in ['0', '1', '2']:
-            err_type = input("Wrong number, choose again.\nChoose the type of distance :\n0: All distances\n1: Distances at origins\n2: Distances at targets\n")
+        while True:
+            try:
+                err_type_idx = input("Choose the type of distance :\n0: All distances\n1: Distance at origins\n2: Distance at targets\n")
+                if err_type_idx not in ["0", "1", "2"]:
+                    raise ValueError("Wrong input, type again")
+                else:
+                    break
+            except ValueError as f:
+                print(f)
 
-    if all_yes == "y":
+    if all_yes in ["y", "Y"]:
         for pidobj in pidobjs:
-            print_error(pidobj, isjmt, err_type)
+            print_error(pidobj, isjmt, err_type_idx)
     else:
-        P = input("P: ")
-        D = input("D: ")
-        S = input("S (hit enter if it is 100): ")
-        if S == '':
-            S = 100
+        P, D, S = get_PID_vals()
         for pidobj in pidobjs:
             if (pidobj.P == float(P)) & (pidobj.D == float(D)) & (pidobj.S == float(S)):
-                print_error(pidobj, isjmt, err_type)
+                print_error(pidobj, isjmt, err_type_idx)
+
+def print_in_format(P, D, S, input_for_stat):
+    print("P {}, D {}, S {}".format(P, D, S) + ": mean = %f var = %f" % (np.average(input_for_stat), np.var(input_for_stat)))
 
 '''added a parameter [isjmt] to indicate if the data is from joint matching task'''
-def print_error(pidobj, isjmt, err_type):
-    if err_type == "0":
-        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err()), np.var(pidobj.abs_err())))
-    elif err_type == '1':
-        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('origins')), np.var(pidobj.abs_err('origins'))))
-    elif err_type == "2":
-        '''if the data is from JMT, err_type # 2 is the error at target positions, passive movements'''
-        if isjmt == "1":
+def print_error(pidobj, isjmt, err_type_idx):
+
+    P = pidobj.P; D = pidobj.D; S = pidobj.S
+
+    if err_type_idx == "0":
+        print_in_format(P, D, S, pidobj.abs_err())
+
+    elif err_type_idx == "1":
+        print_in_format(P, D, S, pidobj.abs_err("origins"))
+
+    elif err_type_idx == "2":
+        if isjmt in ["y", "Y"]:
             target_pm = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 0])
-            print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_pm), np.var(target_pm)))
+            print_in_format(P, D, S, target_pm)
         else:
-            print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(pidobj.abs_err('targets')), np.var(pidobj.abs_err('targets'))))
+            print_in_format(P, D, S, pidobj.abs_err("targets"))
+
     else:
         target_am = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 1])
-        print("P {}, D {}, S {}".format(pidobj.P, pidobj.D, pidobj.S) + ": mean = %f var = %f" % (np.average(target_am), np.var(target_am)))
+        print_in_format(P, D, S, target_am)
+
+'''a function to get y/n until the user types a correct one'''
+def yes_or_no(type = "whole_again"):
+    if type == "same_again":
+        comment = "Do you want to do the same for some other file?[y/n]: "
+    elif type == "jmt":
+        comment = "Is your data coming from Joint Matching Task?[y/n]: "
+    elif type == "all_file":
+        comment = "Do you want to print the means and the variances of all the data?[y/n]: "
+    else:
+        comment = "Do you want to continue?[y/n]: "
+    while True:
+        try:
+            yesno = input(comment)
+            if yesno not in ["y", "Y", "n", "N"]:
+                raise ValueError("Wrong Input, type again")
+            else:
+                break
+        except ValueError as e:
+            print(e)
+    return yesno
 
 if __name__ == "__main__":
     directory = input("Type your directory: ")
@@ -199,37 +243,57 @@ if __name__ == "__main__":
 
     pidobjs = create_PIDs(directory)
 
-    cont_yes = ''
-    while cont_yes != 'n':
-        activity = ''
-        while activity not in ['0', '1', '2', '3']:
-            activity = input("What do you want to do? :\n0: get the means and the variances of the distances between the targets and \
+    while True:
+        try:
+            activity = input("What do you want to do?\n0: get the means and the variances of the distances between the targets and \
 the actual positions\n1: plot the distances\n2: plot a heatmap of the mean absolute errors\n3: torque values(x, y, z)\n")
-            if activity == '0':
-                all_yes = input("Do you want to print the means and the variances of all the data?[y/n]: ")
-                while all_yes not in ['y', 'n']:
-                    all_yes = input("Wrong Input!!\nDo you want to print the means and the variances of all the data?[y/n]: ")
-                print_error_all_or_not(pidobjs, all_yes)
+            if activity not in ['0', '1', '2', '3']:
+                raise ValueError('Wrong Input, type again')
+
+            elif activity == '0':
+                while True:
+                    all_yes = yes_or_no("all_file")
+                    print_error_all_or_not(pidobjs, all_yes)
+                    cont_same = yes_or_no("same_again")
+                    if cont_same in ["y", "Y"]:
+                        continue
+                    else:
+                        break
 
             elif activity == '1':
-                P = input("P: ")
-                D = input("D: ")
-                S = input("S (hit enter if it is 100): ")
-                if S == '':
-                    S = 100
-                which_diffplot(pidobjs, float(P), float(D), float(S))
+                while True:
+                    P, D, S = get_PID_vals()
+                    which_diffplot(pidobjs, float(P), float(D), float(S))
+                    cont_same = yes_or_no("same_again")
+                    if cont_same in ["y", "Y"]:
+                        continue
+                    else:
+                        break
 
-            elif activity == '2':
+            elif activity == "2":
                 mean_errs = PIDobjs_mean_avg_err(pidobjs)
                 mean_avg_err_heatmap(mean_errs)
 
             else:
-                P = input("P: ")
-                D = input("D: ")
-                S = input("S (hit enter if it is 100): ")
-                if S == '':
-                    S = 100
-                axis = input("axis: ")
-                which_torqueplot(pidobjs, float(P), float(D), float(S), axis)
-        cont_yes = input("Do you want to continue?[y/n]: ")
-    print("Bye bye!")
+                while True:
+                    P, D, S = get_PID_vals()
+                    axis = input("Axis[x or y]: ")
+                    which_torqueplot(pidobjs, float(P), float(D), float(S), axis)
+                    cont_same = yes_or_no("same_again")
+                    if cont_same in ["y", "Y"]:
+                        continue
+                    else:
+                        break
+
+            '''check if the user want to continue any process'''
+            cont_proc = yes_or_no("whole_again")
+            if cont_proc in ["y", "Y"]:
+                continue
+            else:
+                print("Bye bye!")
+                break
+
+        except ValueError as h:
+            print(h)
+
+
