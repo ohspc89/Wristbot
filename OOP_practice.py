@@ -69,11 +69,11 @@ class PIDobject(threevariables, twovariables):
         origins = error[~np.isin(error, targets)]
 
         if option == "targets":
-            return np.array([x * 180 / np.pi for x in targets])
+            return targets * 180 / np.pi
         elif option == "origins":
-            return np.array([x * 180 / np.pi for x in origins])
+            return origins * 180 / np.pi
         else:
-            return np.array([x * 180 / np.pi for x in error])
+            return error * 180 / np.pi
 
     def get_torques(self, axis = 'x'):
         torquename = "torque_" + axis
