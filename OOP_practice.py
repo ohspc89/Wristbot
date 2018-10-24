@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 import math
 import os
+from datetime import datetime
 import seaborn as sns
 
 class twovariables:
@@ -20,7 +21,7 @@ class twovariables:
         self.S = float(100)
         self.df = self.read_file()
 
-    '''read the file with the filename'''
+    # read the file with the filename
     def read_file(self):
         file = pd.read_csv(self.filename, sep = '\t')
         return file
@@ -57,8 +58,8 @@ class PIDobject(threevariables, twovariables):
         end = turn_points[1 : ] + 1
         return [self.df.iloc[a : b] for a, b in zip(start, end)]
 
-    '''add an option to choose which type of error to look at'''
-    '''the types are: total, targets and origins'''
+    # add an option to choose which type of error to look at
+    # the types are: total, targets and origins
     def abs_err(self, option = "total"):
         windows = self.make_windows()
 
@@ -66,7 +67,8 @@ class PIDobject(threevariables, twovariables):
         error = np.array([abs(max(window.target_x) - positn_xs[i][0][positn_xs[i][1].argmax()]) for i, window in enumerate(windows)])
 
         targets = np.array([error[i] for i in range(len(error)) if i % 2 == 0])
-        origins = error[~np.isin(error, targets)]
+        origins_full = error[~np.isin(error, targets)]
+        origins = np.array([origins_full[i] for i in range(len(origins_full)) if i % 2 != 0])
 
         if option == "targets":
             return targets * 180 / np.pi
@@ -88,7 +90,7 @@ class PIDobject(threevariables, twovariables):
         plt.ylabel(torquename)
         plt.show()
 
-'''this is the fuction that will create and store all the PIDobjects'''
+# this is the fuction that will create and store all the PIDobjects
 def create_PIDs(directory):
     pidobjs = list()
 
@@ -101,13 +103,13 @@ def create_PIDs(directory):
 
     return pidobjs
 
-'''plot difference between positn_x and target_x'''
+# plot difference between positn_x and target_x
 def which_diffplot(pidobjs, P, D, S = 100):
     for pidobj in pidobjs:
         if (pidobj.P == P) & (pidobj.D == D) & (pidobj.S == S):
             pidobj.plot_diff()
 
-'''For error calculation'''
+# For error calculation
 def PIDobjs_mean_avg_err(pidobjs):
     Ps = Ds = Ss = Es  = pd.Series()
 
@@ -139,13 +141,13 @@ def mean_avg_err_heatmap(df, xaxis = "P", yaxis = "D"):
     plt.title('A heatmap of mean absolute errors for PID values', fontweight = 'bold')
     plt.show()
 
-'''The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted; default = x'''
+# The function which_torqueplot will receive pidobjs, P, D, S values and the axis at which the torque_values will be plotted; default = x
 def which_torqueplot(pidobjs, P, D, S, axis="x"):
     for pidobj in pidobjs:
         if (pidobj.P == P) & (pidobj.D == D) & (pidobj.S == S):
             pidobj.plot_torques(axis)
 
-''' A function to get the user inputs for P, I, D values'''
+# A function to get the user inputs for P, I, D values
 def get_PID_vals():
     print("Remember, if your type parameter values are absent, you will get no result")
     P = input("P: ")
@@ -157,7 +159,7 @@ def get_PID_vals():
 
 
 def print_error_all_or_not(pidobjs, all_yes):
-    '''ask if the data is from Joint Matching Task'''
+    # ask if the data is from Joint Matching Task
     isjmt = yes_or_no("jmt")
 
     if isjmt in ["y", "Y"]:
@@ -182,41 +184,47 @@ def print_error_all_or_not(pidobjs, all_yes):
             except ValueError as f:
                 print(f)
 
+    # Define the output file name
+    filename = datetime.now().strftime('PID_log_%H:%M:%S_%m-%d.csv')
+ 
     if all_yes in ["y", "Y"]:
         for pidobj in pidobjs:
-            print_error(pidobj, isjmt, err_type_idx)
+            print_error(pidobj, isjmt, err_type_idx, filename)
     else:
         P, D, S = get_PID_vals()
         for pidobj in pidobjs:
             if (pidobj.P == float(P)) & (pidobj.D == float(D)) & (pidobj.S == float(S)):
-                print_error(pidobj, isjmt, err_type_idx)
+                print_error(pidobj, isjmt, err_type_idx, filename)
 
-def print_in_format(P, D, S, input_for_stat):
-    print("P {}, D {}, S {}".format(P, D, S) + ": mean = %f var = %f" % (np.average(input_for_stat), np.var(input_for_stat)))
-
-'''added a parameter [isjmt] to indicate if the data is from joint matching task'''
-def print_error(pidobj, isjmt, err_type_idx):
+# added a parameter [isjmt] to indicate if the data is from joint matching task
+def print_error(pidobj, isjmt, err_type_idx, filename):
 
     P = pidobj.P; D = pidobj.D; S = pidobj.S
 
     if err_type_idx == "0":
-        print_in_format(P, D, S, pidobj.abs_err())
+        print_in_format(P, D, S, pidobj.abs_err(), filename)
 
     elif err_type_idx == "1":
-        print_in_format(P, D, S, pidobj.abs_err("origins"))
+        print_in_format(P, D, S, pidobj.abs_err("origins"), filename)
 
     elif err_type_idx == "2":
         if isjmt in ["y", "Y"]:
             target_pm = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 0])
-            print_in_format(P, D, S, target_pm)
+            print_in_format(P, D, S, target_pm, filename)
         else:
-            print_in_format(P, D, S, pidobj.abs_err("targets"))
+            print_in_format(P, D, S, pidobj.abs_err("targets"), filename)
 
     else:
         target_am = np.array([x for i, x in enumerate(pidobj.abs_err("targets")) if i % 2 == 1])
-        print_in_format(P, D, S, target_am)
+        print_in_format(P, D, S, target_am, filename)
 
-'''a function to get y/n until the user types a correct one'''
+# Print the calculated error values to a csv file
+def print_in_format(P, D, S, input_for_stat, filename):
+    with open(filename, "a+") as csv:
+        # The order of the printed figures should be P / D / S / error mean / error variance
+        csv.write("{},{},{},{},{}\n".format(P, D, S, np.average(input_for_stat), np.var(input_for_stat)))
+
+# a function to get y/n until the user types a correct one
 def yes_or_no(type = "whole_again"):
     if type == "same_again":
         comment = "Do you want to do the same for some other file?[y/n]: "

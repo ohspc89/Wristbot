@@ -39,31 +39,36 @@ baud_rate = 115200
 path = "%s_LOG.txt" % ('_'.join(str(datetime.now()).split()))
 
 # open a serial port
-arduino = serial.Serial(port, baud_rate,
-        bytesize = serial.EIGHTBITS,
+arduino = serial.Serial(port, baud_rate, bytesize = serial.EIGHTBITS,
         parity = serial.PARITY_NONE)
 
-arduino.setDTR(False)
-time.sleep(2)
+#arduino.setDTR(False)
+#time.sleep(2)
 
-arduino.flushInput()
-arduino.setDTR(True)
+#arduino.flushInput()
+#arduino.setDTR(True)
 
 arduino_obj = ReadLine(arduino)
 # arduino seems to reset itself when we start new communication,
 # so wait until the reset begins
 
+arduino_obj.s.setDTR(False)
+time.sleep(2)
+
+arduino_obj.s.flushInput()
+arduino_obj.s.setDTR(True)
+
 for i in range(5):
-    print(arduino_obj.readline())
+    line = arduino_obj.readline()
+    print(line)
 
 arduino_obj.send_and_receive()
-
 time.sleep(3)
 
 with open(path, 'wb') as f:
     while True:
         line = arduino_obj.readline()
-        f.writelines([line])
+        print(line)
 
 '''with open(path, 'wb') as f:
     arduino_obj.send_and_receive() 
