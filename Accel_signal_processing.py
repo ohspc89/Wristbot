@@ -245,5 +245,5 @@ fig, ax = tonya.plot_envelope(order = 6, mode = 2, env = True, window_length = 1
 ax.plot(t, np.repeat([0.27], t.shape[0]), label = 'cutoff')
 ax.plot(t, manipulated_convolved, '--', linewidth = 2, label = 'vib-on')
 ax.legend()
-# Run the line below to save the figre
+# Run the line below to save the figure
 # plt.savefig("%s_MAF_applied.png" % tonya.name, dpi = 300, figsize = (8, 6)) 
